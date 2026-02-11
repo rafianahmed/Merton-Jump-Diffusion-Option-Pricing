@@ -21,9 +21,3 @@ Option price computed via Monte Carlo simulation:
 2. Compute payoff max(S_T - K, 0) for call option.
 3. Discount average payoff at risk-free rate.
 
-## Deployment
-
-1. Push this repository to GitHub.
-2. Go to **Settings → Pages** in the repository.
-3. Set branch to `main` and folder to `/root` or `/docs`.
-4. Your app will be live at `https://<username>.github.io/<repo>/`.

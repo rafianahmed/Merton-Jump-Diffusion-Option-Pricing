@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Merton Jump-Diffusion Option Pricing Simulator</title>
+    <link rel="stylesheet" href="style.css">
+    <script>
+        function priceOption() {
+            // Get user inputs
+            let S0 = parseFloat(document.getElementById("S0").value);
+            let K = parseFloat(document.getElementById("K").value);
+            let T = parseFloat(document.getElementById("T").value);
+            let r = parseFloat(document.getElementById("r").value);
+            let sigma = parseFloat(document.getElementById("sigma").value);
+            let mu = parseFloat(document.getElementById("mu").value);
+            let lambda = parseFloat(document.getElementById("lambda").value);
+            let mu_jump = parseFloat(document.getElementById("mu_jump").value);
+            let sigma_jump = parseFloat(document.getElementById("sigma_jump").value);
+            let paths = parseInt(document.getElementById("paths").value);
+
+            let payoffSum = 0;
+
+            for (let i = 0; i < paths; i++) {
+                // Number of jumps
+                let N = poisson(lambda * T);
+                // Jump sizes
+                let J = 1.0;
+                for (let j = 0; j < N; j++) {
+                    J *= lognormal(mu_jump, sigma_jump);
+                }
+                // Diffusion
+                let ST = S0 * J * Math.exp((mu - 0.5 * sigma * sigma) * T + sigma * Math.sqrt(T) * normal());
+                payoffSum += Math.max(ST - K, 0);
+            }
+
+            let optionPrice = Math.exp(-r * T) * (payoffSum / paths);
+            document.getElementById("result").innerHTML = "Estimated Call Option Price: " + optionPrice.toFixed(4);
+        }
+
+        // Standard Normal Random
+        function normal() {
+            let u = 0, v = 0;
+            while(u === 0) u = Math.random();
+            while(v === 0) v = Math.random();
+            return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+        }
+
+        // Poisson random
+        function poisson(lambda) {
+            let L = Math.exp(-lambda);
+            let k = 0;
+            let p = 1;
+            do {
+                k++;
+                p *= Math.random();
+            } while (p > L);
+            return k - 1;
+        }
+
+        // Lognormal random
+        function lognormal(mu, sigma) {
+            return Math.exp(mu + sigma * normal());
+        }
+    </script>
+</head>
+<body>
+    <h1>Merton Jump-Diffusion Option Pricing Simulator</h1>
+
+    <label>S0 (Initial Price): <input type="number" id="S0" value="100"></label><br>
+    <label>K (Strike Price): <input type="number" id="K" value="100"></label><br>
+    <label>T (Time to Maturity in years): <input type="number" id="T" value="1"></label><br>
+    <label>r (Risk-Free Rate): <input type="number" step="0.01" id="r" value="0.05"></label><br>
+    <label>σ (Volatility): <input type="number" step="0.01" id="sigma" value="0.2"></label><br>
+    <label>μ (Drift): <input type="number" step="0.01" id="mu" value="0.1"></label><br>
+    <label>λ (Jump Intensity): <input type="number" step="0.01" id="lambda" value="0.1"></label><br>
+    <label>μ_J (Mean Jump Size): <input type="number" step="0.01" id="mu_jump" value="0.0"></label><br>
+    <label>σ_J (Jump Volatility): <input type="number" step="0.01" id="sigma_jump" value="0.1"></label><br>
+    <label>Monte Carlo Paths: <input type="number" id="paths" value="10000"></label><br><br>
+
+    <button onclick="priceOption()">Price Option</button>
+    <h2 id="result"></h2>
+</body>
+</html>

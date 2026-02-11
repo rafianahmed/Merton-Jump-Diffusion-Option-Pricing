@@ -1,0 +1,6 @@
+merton_jump_sim/
+│
+├─ app.py               # Streamlit app
+├─ requirements.txt     # Dependencies
+├─ README.md            # Explanation
+└─ LICENSE

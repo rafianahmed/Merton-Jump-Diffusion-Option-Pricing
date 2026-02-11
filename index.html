@@ -1,83 +1,278 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Merton Jump-Diffusion Option Pricing Simulator</title>
-    <link rel="stylesheet" href="style.css">
-    <script>
-        function priceOption() {
-            // Get user inputs
-            let S0 = parseFloat(document.getElementById("S0").value);
-            let K = parseFloat(document.getElementById("K").value);
-            let T = parseFloat(document.getElementById("T").value);
-            let r = parseFloat(document.getElementById("r").value);
-            let sigma = parseFloat(document.getElementById("sigma").value);
-            let mu = parseFloat(document.getElementById("mu").value);
-            let lambda = parseFloat(document.getElementById("lambda").value);
-            let mu_jump = parseFloat(document.getElementById("mu_jump").value);
-            let sigma_jump = parseFloat(document.getElementById("sigma_jump").value);
-            let paths = parseInt(document.getElementById("paths").value);
-
-            let payoffSum = 0;
-
-            for (let i = 0; i < paths; i++) {
-                // Number of jumps
-                let N = poisson(lambda * T);
-                // Jump sizes
-                let J = 1.0;
-                for (let j = 0; j < N; j++) {
-                    J *= lognormal(mu_jump, sigma_jump);
-                }
-                // Diffusion
-                let ST = S0 * J * Math.exp((mu - 0.5 * sigma * sigma) * T + sigma * Math.sqrt(T) * normal());
-                payoffSum += Math.max(ST - K, 0);
-            }
-
-            let optionPrice = Math.exp(-r * T) * (payoffSum / paths);
-            document.getElementById("result").innerHTML = "Estimated Call Option Price: " + optionPrice.toFixed(4);
-        }
-
-        // Standard Normal Random
-        function normal() {
-            let u = 0, v = 0;
-            while(u === 0) u = Math.random();
-            while(v === 0) v = Math.random();
-            return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
-        }
-
-        // Poisson random
-        function poisson(lambda) {
-            let L = Math.exp(-lambda);
-            let k = 0;
-            let p = 1;
-            do {
-                k++;
-                p *= Math.random();
-            } while (p > L);
-            return k - 1;
-        }
-
-        // Lognormal random
-        function lognormal(mu, sigma) {
-            return Math.exp(mu + sigma * normal());
-        }
-    </script>
+<meta charset="UTF-8">
+<title>Merton Jump-Diffusion Option Pricing Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    body {
+        font-family: 'Roboto', sans-serif;
+        margin:0; padding:0;
+        background: linear-gradient(135deg, #fdfbfb, #ebedee);
+    }
+    .container {
+        max-width: 1000px;
+        margin: 30px auto;
+        background: #fff;
+        padding: 30px;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    h1, h2 {
+        text-align: center;
+        color: #0077b6;
+    }
+    h2 {margin-top:40px;}
+    label {
+        display:block;
+        margin-top:10px;
+        font-weight:bold;
+    }
+    .tooltip {
+        font-weight: normal;
+        font-size: 0.85em;
+        color: #555;
+        display:block;
+        margin-bottom: 5px;
+    }
+    input {
+        width: 130px;
+        padding: 5px;
+        margin-left: 10px;
+        border-radius: 5px;
+        border:1px solid #ccc;
+    }
+    button {
+        margin-top: 20px;
+        padding: 12px 25px;
+        background: linear-gradient(90deg, #0077b6, #023e8a);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 1.1em;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+    button:hover {
+        background: linear-gradient(90deg, #023e8a, #0077b6);
+    }
+    .result, .accuracy {
+        font-size: 1.3em;
+        font-weight: bold;
+        margin-top: 20px;
+        text-align:center;
+        color:#d00000;
+    }
+    canvas {
+        margin-top:30px;
+        background:#f5f5f5;
+        border-radius:10px;
+        padding:10px;
+    }
+    .charts-container {
+        display:flex;
+        flex-wrap:wrap;
+        justify-content: space-between;
+        gap:20px;
+    }
+    .chart-box {
+        flex:1 1 45%;
+    }
+    .description {
+        background: #e0f7fa;
+        padding:15px;
+        border-radius:10px;
+        margin-top:20px;
+        line-height:1.6;
+    }
+</style>
 </head>
 <body>
+<div class="container">
     <h1>Merton Jump-Diffusion Option Pricing Simulator</h1>
 
-    <label>S0 (Initial Price): <input type="number" id="S0" value="100"></label><br>
-    <label>K (Strike Price): <input type="number" id="K" value="100"></label><br>
-    <label>T (Time to Maturity in years): <input type="number" id="T" value="1"></label><br>
-    <label>r (Risk-Free Rate): <input type="number" step="0.01" id="r" value="0.05"></label><br>
-    <label>σ (Volatility): <input type="number" step="0.01" id="sigma" value="0.2"></label><br>
-    <label>μ (Drift): <input type="number" step="0.01" id="mu" value="0.1"></label><br>
-    <label>λ (Jump Intensity): <input type="number" step="0.01" id="lambda" value="0.1"></label><br>
-    <label>μ_J (Mean Jump Size): <input type="number" step="0.01" id="mu_jump" value="0.0"></label><br>
-    <label>σ_J (Jump Volatility): <input type="number" step="0.01" id="sigma_jump" value="0.1"></label><br>
-    <label>Monte Carlo Paths: <input type="number" id="paths" value="10000"></label><br><br>
+    <div class="description">
+        <h2>Feature Guide</h2>
+        <ul>
+            <li><b>Input Parameters:</b> Set the initial stock price, strike price, time to maturity, risk-free rate, volatility, drift, jump intensity, jump size mean and jump volatility. Each parameter influences the option price calculation.</li>
+            <li><b>Monte Carlo Paths:</b> Number of simulated stock paths for accurate estimation.</li>
+            <li><b>Price Button:</b> Run simulation and calculate option price, stock paths, and histograms.</li>
+            <li><b>Result:</b> Shows the European Call Option Price estimated by Monte Carlo.</li>
+            <li><b>Accuracy:</b> Compares Monte Carlo price to Black-Scholes for reference.</li>
+            <li><b>Paths Chart:</b> Visualizes simulated stock paths over time.</li>
+            <li><b>Histogram:</b> Shows distribution of final stock prices and payoffs.</li>
+        </ul>
+    </div>
 
-    <button onclick="priceOption()">Price Option</button>
-    <h2 id="result"></h2>
+    <!-- Input Section -->
+    <label>S0 (Initial Stock Price)
+        <span class="tooltip">Starting stock price at t=0. Influences option payoff directly.</span>
+        <input type="number" id="S0" value="100">
+    </label>
+    <label>K (Strike Price)
+        <span class="tooltip">The price at which the option can be exercised. Determines payoff magnitude.</span>
+        <input type="number" id="K" value="100">
+    </label>
+    <label>T (Time to Maturity in Years)
+        <span class="tooltip">Duration until option expires. Longer times increase uncertainty.</span>
+        <input type="number" step="0.1" id="T" value="1">
+    </label>
+    <label>r (Risk-Free Rate)
+        <span class="tooltip">Annualized risk-free rate for discounting option payoff.</span>
+        <input type="number" step="0.01" id="r" value="0.05">
+    </label>
+    <label>σ (Volatility)
+        <span class="tooltip">Magnitude of stock price fluctuations. Higher volatility increases option value.</span>
+        <input type="number" step="0.01" id="sigma" value="0.2">
+    </label>
+    <label>μ (Drift)
+        <span class="tooltip">Expected growth rate of stock price. Adjusts expected trend.</span>
+        <input type="number" step="0.01" id="mu" value="0.1">
+    </label>
+    <label>λ (Jump Intensity)
+        <span class="tooltip">Average number of jumps per year. Higher lambda increases jump frequency.</span>
+        <input type="number" step="0.01" id="lambda" value="0.1">
+    </label>
+    <label>μ_J (Mean Jump Size)
+        <span class="tooltip">Average size of jumps in lognormal scale. Positive values increase stock after jumps.</span>
+        <input type="number" step="0.01" id="mu_jump" value="0.0">
+    </label>
+    <label>σ_J (Jump Volatility)
+        <span class="tooltip">Randomness of jumps. Higher sigma_jump increases variability of jump magnitude.</span>
+        <input type="number" step="0.01" id="sigma_jump" value="0.1">
+    </label>
+    <label>Monte Carlo Paths
+        <span class="tooltip">Number of simulated paths. More paths increase accuracy.</span>
+        <input type="number" id="paths" value="1000">
+    </label><br>
+
+    <button onclick="priceOption()">Price Option & Simulate</button>
+
+    <div class="result" id="result"></div>
+    <div class="accuracy" id="accuracy"></div>
+
+    <div class="charts-container">
+        <div class="chart-box">
+            <h2>Simulated Stock Paths</h2>
+            <canvas id="pathsChart"></canvas>
+        </div>
+        <div class="chart-box">
+            <h2>Histogram of Final Prices</h2>
+            <canvas id="histChart"></canvas>
+        </div>
+    </div>
+
+    <div class="description">
+        <h2>How to Interpret</h2>
+        <p>
+            The Monte Carlo simulation generates multiple possible stock price paths based on the Merton Jump-Diffusion model. 
+            The European Call Option price is computed by discounting the average payoff at expiration. 
+            The paths chart shows possible stock trajectories over time. 
+            The histogram shows distribution of final stock prices and helps visualize payoff variability. 
+            Accuracy is measured against the Black-Scholes price for reference (ignoring jumps).
+        </p>
+    </div>
+</div>
+
+<script>
+// Monte Carlo simulation function
+function priceOption(){
+    let S0 = parseFloat(document.getElementById("S0").value);
+    let K = parseFloat(document.getElementById("K").value);
+    let T = parseFloat(document.getElementById("T").value);
+    let r = parseFloat(document.getElementById("r").value);
+    let sigma = parseFloat(document.getElementById("sigma").value);
+    let mu = parseFloat(document.getElementById("mu").value);
+    let lambda = parseFloat(document.getElementById("lambda").value);
+    let mu_jump = parseFloat(document.getElementById("mu_jump").value);
+    let sigma_jump = parseFloat(document.getElementById("sigma_jump").value);
+    let paths = parseInt(document.getElementById("paths").value);
+
+    let dt = 0.01, steps=Math.ceil(T/dt);
+    let allPaths=[], finalPrices=[], payoffs=[], payoffSum=0;
+
+    for(let i=0;i<paths;i++){
+        let S=[S0];
+        for(let t=1;t<=steps;t++){
+            let N=poisson(lambda*dt), J=1.0;
+            for(let j=0;j<N;j++) J*=lognormal(mu_jump, sigma_jump);
+            let S_new=S[S.length-1]*J*Math.exp((mu-0.5*sigma*sigma)*dt + sigma*Math.sqrt(dt)*normal());
+            S.push(S_new);
+        }
+        allPaths.push(S);
+        let ST=S[S.length-1];
+        finalPrices.push(ST);
+        let payoff=Math.max(ST-K,0);
+        payoffs.push(payoff);
+        payoffSum += payoff;
+    }
+
+    let optionPrice=Math.exp(-r*T)*(payoffSum/paths);
+    document.getElementById("result").innerHTML="European Call Price: "+optionPrice.toFixed(4);
+
+    // Accuracy
+    let bsPrice=blackScholes(S0,K,T,r,sigma);
+    let error=Math.abs(optionPrice-bsPrice);
+    document.getElementById("accuracy").innerHTML="Black-Scholes Price: "+bsPrice.toFixed(4)+" | Approx Error: "+error.toFixed(4);
+
+    drawPathsChart(allPaths, steps);
+    drawHistogram(finalPrices,payoffs);
+}
+
+// Chart functions
+function drawPathsChart(allPaths, steps){
+    let ctx=document.getElementById("pathsChart").getContext("2d");
+    let datasets=[];
+    allPaths.slice(0,30).forEach((p,i)=>{
+        datasets.push({
+            label:'Path '+(i+1),
+            data:p,
+            borderColor:`hsla(${Math.random()*360},70%,50%,0.7)`,
+            fill:false,
+            tension:0.2
+        });
+    });
+    if(window.pathsChartInstance) window.pathsChartInstance.destroy();
+    window.pathsChartInstance=new Chart(ctx,{
+        type:'line',
+        data:{labels:Array.from({length:steps+1},(_,i)=>(i/steps).toFixed(2)),datasets:datasets},
+        options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{title:{display:true,text:'Time (Years)'}},y:{title:{display:true,text:'Stock Price'}}}}
+    });
+}
+
+function drawHistogram(finalPrices,payoffs){
+    let ctx=document.getElementById("histChart").getContext("2d");
+    if(window.histChartInstance) window.histChartInstance.destroy();
+    let bins=20;
+    let min=Math.min(...finalPrices), max=Math.max(...finalPrices);
+    let binWidth=(max-min)/bins, counts=Array(bins).fill(0);
+    finalPrices.forEach(p=>{
+        let idx=Math.min(Math.floor((p-min)/binWidth),bins-1);
+        counts[idx]++;
+    });
+    let labels=[];
+    for(let i=0;i<bins;i++) labels.push((min+i*binWidth).toFixed(2));
+    window.histChartInstance=new Chart(ctx,{
+        type:'bar',
+        data:{labels:labels,datasets:[{label:'Final Stock Price Frequency',data:counts,backgroundColor:'rgba(0,119,182,0.6)'}]},
+        options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{title:{display:true,text:'Final Stock Price'}},y:{title:{display:true,text:'Frequency'}}}}
+    });
+}
+
+// Random generators
+function normal(){let u=0,v=0;while(u===0) u=Math.random();while(v===0) v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function poisson(lambda){let L=Math.exp(-lambda),k=0,p=1;do{k++;p*=Math.random();}while(p>L);return k-1;}
+function lognormal(mu,sigma){return Math.exp(mu+sigma*normal());}
+
+// Black-Scholes
+function blackScholes(S,K,T,r,sigma){
+    let d1=(Math.log(S/K)+(r+0.5*sigma*sigma)*T)/(sigma*Math.sqrt(T));
+    let d2=d1-sigma*Math.sqrt(T);
+    return S*cdf(d1)-K*Math.exp(-r*T)*cdf(d2);
+}
+function cdf(x){return 0.5*(1+erf(x/Math.sqrt(2)));}
+function erf(x){let sign=x<0?-1:1;x=Math.abs(x);let a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=1/(1+0.3275911*x);return sign*(1-((((((a5*p+a4)*p+a3)*p+a2)*p+a1)*p)*Math.exp(-x*x)));}
+</script>
 </body>
 </html>

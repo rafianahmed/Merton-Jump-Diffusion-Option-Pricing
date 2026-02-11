@@ -1,6 +1,5 @@
 merton_jump_sim/
 │
-├─ app.py               # Streamlit app
-├─ requirements.txt     # Dependencies
-├─ README.md            # Explanation
-└─ LICENSE
+├─ index.html          # Main HTML + JS file
+├─ style.css           # Optional, for styling
+└─ README.md           # Explanation
